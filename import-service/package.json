@@ -1,0 +1,21 @@
+{
+  "dependencies": {
+    "@aws-sdk/credential-providers": "^3.341.0",
+    "@aws-sdk/hash-node": "^3.341.0",
+    "@aws-sdk/s3-request-presigner": "^3.341.0",
+    "@aws-sdk/signature-v4-crt": "^3.341.0",
+    "@aws-sdk/url-parser": "^3.341.0",
+    "@aws-sdk/util-format-url": "^3.341.0",
+    "aws-sdk": "^2.1384.0",
+    "bufferutil": "^4.0.7",
+    "csv-parser": "^3.0.0",
+    "csvtojson": "^2.0.10",
+    "fast-csv": "^4.3.6",
+    "serverless-s3-sync": "^3.1.0",
+    "utf-8-validate": "^5.0.10"
+  },
+  "devDependencies": {
+    "serverless-plugin-common-excludes": "^4.0.0",
+    "serverless-plugin-include-dependencies": "^5.1.0"
+  }
+}

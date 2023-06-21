@@ -1,0 +1,216 @@
+service: product-service
+frameworkVersion: "3"
+
+package:
+  individually: true
+
+plugins:
+  - serverless-dynamodb-local
+  - serverless-offline
+  - serverless-plugin-common-excludes
+  - serverless-plugin-include-dependencies
+  - serverless-lift
+
+custom:
+  BUCKET_NAME: "import-cahv"
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: dev
+  region: us-east-1
+  iam:
+    role:
+      statements:
+        # Allow functions to list all sqs
+        - Effect: Allow
+          Action:
+            - "sqs:SendMessage"
+            - "sqs:GetQueueUrl"
+          Resource: "arn:aws:sqs:${self:provider.region}:330926698891:product-service-dev-catalogItemsQueue"
+        - Effect: "Allow"
+          Action:
+            - "sqs:ListQueues"
+          Resource: "arn:aws:sqs:${self:provider.region}:330926698891:*"
+        - Effect: Allow
+          Action: "sqs:SendMessage"
+          Resource: "*"
+        # Allow functions to list all buckets
+        - Effect: Allow
+          Action: "s3:ListBucket"
+          Resource: "*"
+        - Effect: Allow
+          Action: "sns:Publish"
+          Resource: "arn:aws:sns:us-east-1:330926698891:createProductTopic"
+        # Allow functions to read/write objects in a bucket
+        - Effect: Allow
+          Action:
+            - "s3:GetObject"
+            - "s3:PutObject"
+            - "s3:ReadObject"
+            - "s3:WriteObject"
+          Resource:
+            - "arn:aws:s3:::import-cahv/*"
+        - Effect: Allow
+          Action:
+            - "dynamodb:BatchGetItem"
+            - "dynamodb:BatchWriteItem"
+            - "dynamodb:PutItem"
+            - "dynamodb:DeleteItem"
+            - "dynamodb:GetItem"
+            - "dynamodb:Scan"
+            - "dynamodb:Query"
+            - "dynamodb:UpdateItem"
+            - "dynamodb:PartiQL*"
+          Resource:
+            - !GetAtt StockDynamoDbTable.Arn
+            - !Sub
+              - ${Table}/*
+              - Table: !GetAtt StockDynamoDbTable.Arn
+            - !GetAtt ProductDynamoDbTable.Arn
+            - !Sub
+              - ${Table}/*
+              - Table: !GetAtt ProductDynamoDbTable.Arn
+
+constructs:
+  catalogItemsQueue:
+    type: queue
+    worker:
+      handler: handlers/sqs/process.process
+
+functions:
+  catalogBatchProcess:
+    handler: handlers/sqs/process.process
+    memorySize: 256
+    # role: DynamoDBLambdaAccessRole
+    environment:
+      STOCK_TABLE: !Ref StockDynamoDbTable
+      PRODUCT_TABLE: !Ref ProductDynamoDbTable
+    events:
+      - sqs:
+          batchSize: 5
+          maximumBatchingWindow: 60
+          functionResponseType: ReportBatchItemFailures
+          arn:
+            Fn::Join:
+              - ":"
+              - - arn
+                - aws
+                - sqs
+                - Ref: AWS::Region
+                - Ref: AWS::AccountId
+                - product-service-dev-catalogItemsQueue
+  getProductsById:
+    handler: handlers/products/get.get
+    memorySize: 256
+    url: true
+    # adding the following:
+    role: DynamoDBLambdaAccessRole
+    environment:
+      STOCK_TABLE: !Ref StockDynamoDbTable
+      PRODUCT_TABLE: !Ref ProductDynamoDbTable
+    events:
+      - httpApi:
+          path: /products/{id}
+          method: get
+  getProductList:
+    handler: handlers/products/list.list
+    url: true
+    memorySize: 256
+    # adding the following:
+    role: DynamoDBLambdaAccessRole
+    environment:
+      STOCK_TABLE: !Ref StockDynamoDbTable
+      PRODUCT_TABLE: !Ref ProductDynamoDbTable
+    events:
+      - httpApi:
+          path: /products
+          method: get
+  createProduct:
+    handler: handlers/products/create.create
+    url: true
+    memorySize: 256
+    # adding the following:
+    role: DynamoDBLambdaAccessRole
+    environment:
+      STOCK_TABLE: !Ref StockDynamoDbTable
+      PRODUCT_TABLE: !Ref ProductDynamoDbTable
+    events:
+      - httpApi:
+          path: /products
+          method: post
+
+resources:
+  Resources:
+    ProductsTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        DisplayName: "The creation of products is in progress"
+        TopicName: createProductTopic
+        Subscription:
+          - Endpoint: "christian_herrejon@epam.com"
+            Protocol: "email"
+    StockDynamoDbTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: product_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: product_id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: stocks
+    ProductDynamoDbTable:
+      Type: AWS::DynamoDB::Table
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: products
+    DynamoDBLambdaAccessRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: lambda.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+          - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        Policies:
+          - PolicyName: dynamodb
+            PolicyDocument:
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - "dynamodb:BatchGetItem"
+                    - "dynamodb:BatchWriteItem"
+                    - "dynamodb:PutItem"
+                    - "dynamodb:DeleteItem"
+                    - "dynamodb:GetItem"
+                    - "dynamodb:Scan"
+                    - "dynamodb:Query"
+                    - "dynamodb:UpdateItem"
+                    - "dynamodb:PartiQL*"
+                  Resource:
+                    - !GetAtt StockDynamoDbTable.Arn
+                    - !Sub
+                      - ${Table}/*
+                      - Table: !GetAtt StockDynamoDbTable.Arn
+                    - !GetAtt ProductDynamoDbTable.Arn
+                    - !Sub
+                      - ${Table}/*
+                      - Table: !GetAtt ProductDynamoDbTable.Arn
