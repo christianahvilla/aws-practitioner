@@ -1,0 +1,18 @@
+service: authorization-service
+frameworkVersion: "3"
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  environment:
+    GIT_HUB_USER: ${env:GIT_HUB_USER}
+    GIT_HUB_PASSWORD: ${env:GIT_HUB_PASSWORD}
+
+functions:
+  authorizer:
+    handler: handlers/authorization.authorization
+plugins:
+  - serverless-plugin-common-excludes
+  - serverless-plugin-include-dependencies

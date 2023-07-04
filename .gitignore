@@ -1,0 +1,5 @@
+authorization-service/node_modules
+import-service/node_modules
+product-service/node_modules
+
+authorization-service/.env
