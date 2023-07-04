@@ -12,19 +12,19 @@ const errorResponseHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json",
   },
-}
+};
 
 const responseHeaders = {
-      statusCode: 200,
-     headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Content-Type": "application/json",
-      },
-}
+  statusCode: 200,
+  headers: {
+    "Access-Control-Allow-Origin": "*",
+    "Content-Type": "application/json",
+  },
+};
 
 module.exports = {
-    responseHeaders, 
-    errorResponseHeaders,
-    stockParams,
-    productParams
-}
+  responseHeaders,
+  errorResponseHeaders,
+  stockParams,
+  productParams,
+};

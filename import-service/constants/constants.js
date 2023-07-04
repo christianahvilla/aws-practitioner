@@ -1,5 +1,7 @@
-const bucketName = process.env.PRODUCTS_BUCKET
-const defaultRegion = process.env.REGION
+const bucketName = process.env.PRODUCTS_BUCKET;
+const defaultRegion = process.env.REGION;
+const queueURL =
+  "https://sqs.us-east-1.amazonaws.com/330926698891/product-service-dev-catalogItemsQueue";
 
 const errorResponseHeaders = {
   statusCode: 501,
@@ -7,7 +9,7 @@ const errorResponseHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json",
   },
-}
+};
 
 const responseHeaders = {
   statusCode: 200,
@@ -15,17 +17,18 @@ const responseHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Content-Type": "application/json",
   },
-}
+};
 
 const productsBucketParams = {
   Bucket: bucketName,
-  Prefix: 'uploaded/'
-}
+  Prefix: "uploaded/",
+};
 
 module.exports = {
-  responseHeaders, 
+  responseHeaders,
   errorResponseHeaders,
   bucketName,
   productsBucketParams,
-  defaultRegion
-}
+  defaultRegion,
+  queueURL,
+};

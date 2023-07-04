@@ -13,6 +13,14 @@ provider:
   runtime: nodejs18.x
   stage: dev
   region: us-east-1
+  httpApi:
+    authorizers:
+      customAuthorizer:
+            resultTtlInSeconds: 0
+            identitySource:
+              - $request.header.Authorization
+            type: request
+            functionArn: arn:aws:lambda:us-east-1:330926698891:function:authorization-service-dev-authorizer
   custom:
   environment:
     PRODUCTS_BUCKET: import-cahv
@@ -27,6 +35,13 @@ provider:
         - Effect: Allow
           Action: 's3:ListBucket'
           Resource: '*'
+        - Effect: Allow
+          Action: 
+           - 'sqs:SendMessage'
+           - 'sqs:ReceiveMessage'
+           - 'sqs:GetQueueAttributes'
+           - "sqs:ListQueues"
+          Resource: '*'
         # Allow functions to read/write objects in a bucket
         - Effect: Allow
           Action:
@@ -35,6 +50,7 @@ provider:
             - 's3:ReadObject'
           Resource:
             - 'arn:aws:s3:::import-cahv/*'
+        
 
 functions:
   importProductsFile:
@@ -42,8 +58,10 @@ functions:
     url: true
     events:
       - httpApi:
-          path: /import/{name}
+          path: /import
           method: GET
+          authorizer:
+            name: customAuthorizer
   importFileParser:
     handler:  handlers/files/parser.parser      
     events:
@@ -60,6 +78,26 @@ functions:
           forceDeploy: true
 resources:
   Resources:
+    RestApi:
+      Type: AWS::ApiGateway::RestApi
+      Properties:
+        Name: myRestApi
+    GatewayResponse:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+        ResponseType: AUTHORIZER_FAILURE
+        RestApiId: !Ref RestApi
+        StatusCode: '403'
+      #  Properties:
+      #   ResponseParameters:
+      #     gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+      #     gatewayresponse.header.Access-Control-Allow-Headers: "'*'"
+      #   ResponseType: UNAUTHORIZED
+      #   RestApiId: !Ref RestApi
+      #   StatusCode: '401'
     Bucket:
       Type: AWS::S3::Bucket
       Properties:
